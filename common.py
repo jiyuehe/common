@@ -95,7 +95,7 @@ def convert_value_to_purple_yellow(data, data_min, data_max, data_threshold):
     
     return map_color
 
-# plotting figure related
+# figure setting related
 # ==================================================
 def set_axes_equal(ax): 
     # make 3D plot axes have equal scale so spheres look like spheres
@@ -119,5 +119,28 @@ def crop_image(image_file_name): # crop image to remove excess whitespace
 
     img.crop((x0, y0, x1, y1)).save(image_file_name)
 
-# 
+# plots
 # ==================================================
+def plot_mesh(vertex, face, save_flag, file_path_mesh):
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # create the 3D mesh
+    mesh = Poly3DCollection(vertex[face])
+    mesh.set_alpha(1)
+    mesh.set_facecolor([0.8,0.8,0.8])
+    mesh.set_edgecolor([0.3,0.3,0.3])
+    ax.add_collection3d(mesh)
+
+    ax.view_init(elev=70, azim=-70)
+    set_axes_equal(ax)
+
+    plt.axis('off')
+    plt.tight_layout()
+
+    # save the plot
+    if save_flag == 1:
+        plt.savefig(file_path_mesh + '.png', dpi=300, bbox_inches='tight')
+        crop_image(file_path_mesh + '.png') # crop the saved plot to remove excess whitespace
+
+    plt.close()
