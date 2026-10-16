@@ -183,6 +183,7 @@ def plot_mesh(vertex, face, save_flag, file_path_mesh):
     if save_flag == 1:
         png_path = f'{file_path_mesh}.png'
         fig.write_image(png_path, scale=2)
+        crop_image(png_path)
 
         html_path = f'{file_path_mesh}.html'
         fig.write_html(html_path, include_plotlyjs='cdn')
