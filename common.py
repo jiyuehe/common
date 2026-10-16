@@ -118,3 +118,6 @@ def crop_image(image_file_name): # crop image to remove excess whitespace
     y1, x1 = coords.max(axis=0) + 1
 
     img.crop((x0, y0, x1, y1)).save(image_file_name)
+
+# 
+# ==================================================
