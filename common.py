@@ -17,6 +17,9 @@ import numpy as np
 from PIL import Image # pip install pillow
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import subprocess
+import sys
+import plotly.graph_objects as go
 
 # obj. 3D mesh file
 # ==================================================
@@ -122,25 +125,64 @@ def crop_image(image_file_name): # crop image to remove excess whitespace
 # plots
 # ==================================================
 def plot_mesh(vertex, face, save_flag, file_path_mesh):
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    vertex = np.asarray(vertex)
+    face = np.asarray(face, dtype=int)
 
-    # create the 3D mesh
-    mesh = Poly3DCollection(vertex[face])
-    mesh.set_alpha(1)
-    mesh.set_facecolor([0.8,0.8,0.8])
-    mesh.set_edgecolor([0.3,0.3,0.3])
-    ax.add_collection3d(mesh)
+    # Convert Matplotlib-style elev/azim to Plotly camera eye coordinates.
+    # elev=70, azim=-70 corresponds to a camera elevated above the X-Y plane and rotated in the negative azimuth direction.
+    elev_deg = 70.0
+    azim_deg = -70.0
+    radius = 1.5
+    azim_rad = np.deg2rad(azim_deg)
+    elev_rad = np.deg2rad(elev_deg)
+    camera_eye = dict(
+        x=radius * np.cos(elev_rad) * np.cos(azim_rad),
+        y=radius * np.cos(elev_rad) * np.sin(azim_rad),
+        z=radius * np.sin(elev_rad),
+    )
 
-    ax.view_init(elev=70, azim=-70)
-    set_axes_equal(ax)
+    mesh = go.Mesh3d(
+        x=vertex[:, 0],
+        y=vertex[:, 1],
+        z=vertex[:, 2],
+        i=face[:, 0],
+        j=face[:, 1],
+        k=face[:, 2],
+        opacity=1.0,
+        color='lightgray',
+        flatshading=False,
+        hoverinfo='skip',
+        showscale=False,
+    )
 
-    plt.axis('off')
-    plt.tight_layout()
+    fig = go.Figure(data=[mesh])
+    fig.update_layout(
+        margin=dict(l=0, r=0, b=0, t=0),
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False),
+            aspectmode='data',
+            camera=dict(
+                eye=camera_eye,
+                center=dict(x=0, y=0, z=0),
+                up=dict(x=0, y=0, z=1),
+            ),
+            dragmode='orbit',
+            xaxis_visible=False,
+            yaxis_visible=False,
+            zaxis_visible=False,
+            camera_eye=camera_eye,
+            camera_center=dict(x=0, y=0, z=0),
+            camera_up=dict(x=0, y=0, z=1),
+        ),
+        paper_bgcolor='white',
+        plot_bgcolor='white',
+    )
 
-    # save the plot
     if save_flag == 1:
-        plt.savefig(file_path_mesh + '.png', dpi=300, bbox_inches='tight')
-        crop_image(file_path_mesh + '.png') # crop the saved plot to remove excess whitespace
+        png_path = f'{file_path_mesh}.png'
+        fig.write_image(png_path, scale=2)
 
-    plt.close()
+        html_path = f'{file_path_mesh}.html'
+        fig.write_html(html_path, include_plotlyjs='cdn')
