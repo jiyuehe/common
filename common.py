@@ -124,7 +124,7 @@ def crop_image(image_file_name): # crop image to remove excess whitespace
 
 # plots
 # ==================================================
-def plot_mesh(vertex, face, save_flag, file_path_mesh):
+def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
     vertex = np.asarray(vertex)
     face = np.asarray(face, dtype=int)
 
@@ -156,6 +156,30 @@ def plot_mesh(vertex, face, save_flag, file_path_mesh):
     )
 
     fig = go.Figure(data=[mesh])
+    if edge_flag == 1:
+        edge_color = 'darkgray'
+        edge_width = 1.0
+
+        edge_x = []
+        edge_y = []
+        edge_z = []
+        for tri in face:
+            for a, b in [(0, 1), (1, 2), (2, 0)]:
+                edge_x.extend([vertex[tri[a], 0], vertex[tri[b], 0], None])
+                edge_y.extend([vertex[tri[a], 1], vertex[tri[b], 1], None])
+                edge_z.extend([vertex[tri[a], 2], vertex[tri[b], 2], None])
+
+        edge_trace = go.Scatter3d(
+            x=edge_x,
+            y=edge_y,
+            z=edge_z,
+            mode='lines',
+            line=dict(color=edge_color, width=edge_width),
+            hoverinfo='skip',
+            showlegend=False,
+        )
+        fig.add_trace(edge_trace)
+        
     fig.update_layout(
         margin=dict(l=0, r=0, b=0, t=0),
         scene=dict(
