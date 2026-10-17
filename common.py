@@ -227,22 +227,15 @@ def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
 
     return fig
 
-def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, file_path):
+def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save_flag, file_path):
+    # triangular mesh
     save_flag = 0
     edge_flag = 0
     file_path_mesh = []
     fig = plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh)
+    fig.data[0].opacity = 0.3
 
-    # 3D scatter plot
-    fig.add_trace(go.Scatter3d(
-        x=vertex[:, 0],
-        y=vertex[:, 1],
-        z=vertex[:, 2],
-        mode='markers',
-        marker=dict(size=1, color='lightgray', opacity=0.5),
-        name='Geometry',
-        showlegend=False
-    ))
+    # electrodes
     fig.add_trace(go.Scatter3d(
         x=electrode_positions[:, 0],
         y=electrode_positions[:, 1],
@@ -252,16 +245,24 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, file
         name='Electrodes',
         showlegend=False
     ))
-    fig.update_layout(
-        scene=dict(
-            dragmode='orbit',
-            xaxis_title='X',
-            yaxis_title='Y',
-            zaxis_title='Z',
-            aspectmode='data'
-        ),
-        margin=dict(l=0, r=0, b=0, t=40),
-        width=1000,
-        height=800
-    )
+    # fig.update_layout(
+    #     scene=dict(
+    #         dragmode='orbit',
+    #         xaxis_title='X',
+    #         yaxis_title='Y',
+    #         zaxis_title='Z',
+    #         aspectmode='data'
+    #     ),
+    #     margin=dict(l=0, r=0, b=0, t=40),
+    #     width=1000,
+    #     height=800
+    # )
     fig.show()
+
+    if save_flag == 1:
+        png_path = f'{file_path}.png'
+        fig.write_image(png_path, scale=2)
+        crop_image(png_path)
+
+        html_path = f'{file_path}.html'
+        fig.write_html(html_path, include_plotlyjs='cdn')
