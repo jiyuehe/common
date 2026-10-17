@@ -252,3 +252,89 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save
         html_path = f'{file_path}.html'
         fig.write_html(html_path, include_plotlyjs='cdn')
 
+def plot_electrode_electrogram(result_folder, electrode, electrode_point_info, p_id, file_name_prefix):
+    # plot some example electrograms
+    total_segments = electrode.shape[0]
+    if total_segments <= 5:
+        e_ids = np.arange(total_segments)
+    else:
+        e_ids = np.linspace(0, total_segments - 1, 5, dtype=int) # 5 uniformly spaced indices
+
+    egm_unipolar = np.zeros((len(e_ids), 2500))
+    unipolar_name = [None] * len(e_ids)
+    egm_bipolar = np.zeros((len(e_ids), 2500))
+    bipolar_name = [None] * len(e_ids)
+    egm_reference = np.zeros((len(e_ids), 2500))
+    reference_name = [None] * len(e_ids)
+    egm_surface = np.zeros((len(e_ids), 2500))
+
+    woi = np.zeros((len(e_ids), 2))
+    k = 0
+    for i in e_ids:
+        temp = electrode[i]['unipolar']
+        if temp is not None:
+            egm_unipolar[k, :] = temp
+            unipolar_name[k] = electrode[i]['unipolar_name']
+            
+        temp = electrode[i]['bipolar']
+        if temp is not None:
+            egm_bipolar[k, :] = temp
+            bipolar_name[k] = electrode[i]['bipolar_name']
+
+        temp = electrode[i]['reference']
+        if temp is not None:
+            egm_reference[k, :] = temp
+            reference_name[k] = electrode[i]['reference_name']
+
+        temp = electrode[i]['surface'][:,0] # 0th is the V1 channel
+        if temp is not None:
+            egm_surface[k, :] = temp
+
+        woi[k, :] = electrode_point_info[i]['window_of_interest']
+        k += 1
+
+    # plot the electrograms of the example electrodes
+    t = np.arange(egm_unipolar.shape[1])
+    for i in range(len(e_ids)):
+        fig, axs = plt.subplots(4, 1, figsize=(10, 12))
+
+        woi_start = int(woi[i, 0])
+        woi_end = int(woi[i, 1])
+        
+        egm = egm_unipolar[i,:]
+        axs[0].plot(t[:woi_start], egm[:woi_start], color='blue') # plot before woi
+        axs[0].plot(t[woi_start:woi_end], egm[woi_start:woi_end], color='red') # plot woi region
+        axs[0].plot(t[woi_end:], egm[woi_end:], color='blue') # plot after woi
+        title = f'Unipolar Electrograms ({unipolar_name[i]})'
+        axs[0].set_title(title)
+        axs[0].grid(True, alpha=1)
+
+        egm = egm_bipolar[i,:]
+        axs[1].plot(t[:woi_start], egm[:woi_start], color='blue') # plot before woi
+        axs[1].plot(t[woi_start:woi_end], egm[woi_start:woi_end], color='red') # plot woi region
+        axs[1].plot(t[woi_end:], egm[woi_end:], color='blue') # plot after woi
+        title = f'Bipolar Electrograms ({bipolar_name[i]})'
+        axs[1].set_title(title)
+        axs[1].grid(True, alpha=1)
+
+        egm = egm_reference[i,:]
+        axs[2].plot(t[:woi_start], egm[:woi_start], color='blue') # plot before woi
+        axs[2].plot(t[woi_start:woi_end], egm[woi_start:woi_end], color='red') # plot woi region
+        axs[2].plot(t[woi_end:], egm[woi_end:], color='blue') # plot after woi
+        title = f'Reference Electrograms ({reference_name[i]})'
+        axs[2].set_title(title)
+        axs[2].grid(True, alpha=1)
+
+        egm = egm_surface[i,:]
+        axs[3].plot(t[:woi_start], egm[:woi_start], color='blue') # plot before woi
+        axs[3].plot(t[woi_start:woi_end], egm[woi_start:woi_end], color='red') # plot woi region
+        axs[3].plot(t[woi_end:], egm[woi_end:], color='blue') # plot after woi
+        title = 'Surface Electrograms (V1)'
+        axs[3].set_title(title)
+        axs[3].grid(True, alpha=1)
+
+        plt.tight_layout()
+        file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{e_ids[i]}.png')
+        plt.savefig(file_path)
+        plt.close()
+
