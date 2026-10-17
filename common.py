@@ -51,6 +51,19 @@ def save_obj(file_directory, mesh_name, vertex, face):
             # add 1 to convert 0-based python indices to 1-based OBJ indices
             fid.write(f'f {f[0]+1} {f[1]+1} {f[2]+1}\n')
 
+# load npz file
+# ==================================================
+def load_npz(file_path):
+    data_temp = np.load(file_path, allow_pickle=True)
+    data = {}
+    for key in data_temp.files:
+        value = data_temp[key]
+        if isinstance(value, np.ndarray) and value.dtype == object and value.shape == ():
+            value = value.item()
+        data[key] = value
+        
+    return data
+
 # color mapping
 # ==================================================
 def convert_value_to_red_blue(data, data_min, data_max, data_threshold):
@@ -179,7 +192,7 @@ def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
             showlegend=False,
         )
         fig.add_trace(edge_trace)
-        
+
     fig.update_layout(
         margin=dict(l=0, r=0, b=0, t=0),
         scene=dict(
@@ -211,3 +224,53 @@ def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
 
         html_path = f'{file_path_mesh}.html'
         fig.write_html(html_path, include_plotlyjs='cdn')
+
+    return fig
+
+def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, file_path):
+    save_flag = 0
+    edge_flag = 0
+    file_path_mesh = []
+    fig = plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh)
+
+
+
+
+
+
+    # grab the electrode locations
+    xyz = electrode_positions
+
+    # 3D scatter plot (plotly)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(
+        x=vertex[:, 0],
+        y=vertex[:, 1],
+        z=vertex[:, 2],
+        mode='markers',
+        marker=dict(size=1, color='lightgray', opacity=0.5),
+        name='Geometry',
+        showlegend=False
+    ))
+    fig.add_trace(go.Scatter3d(
+        x=xyz[:, 0],
+        y=xyz[:, 1],
+        z=xyz[:, 2],
+        mode='markers',
+        marker=dict(size=3, color='blue', opacity=1),
+        name='Electrodes',
+        showlegend=False
+    ))
+    fig.update_layout(
+        scene=dict(
+            dragmode='orbit',
+            xaxis_title='X',
+            yaxis_title='Y',
+            zaxis_title='Z',
+            aspectmode='data'
+        ),
+        margin=dict(l=0, r=0, b=0, t=40),
+        width=1000,
+        height=800
+    )
+    fig.show()
