@@ -233,16 +233,7 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, file
     file_path_mesh = []
     fig = plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh)
 
-
-
-
-
-
-    # grab the electrode locations
-    xyz = electrode_positions
-
-    # 3D scatter plot (plotly)
-    fig = go.Figure()
+    # 3D scatter plot
     fig.add_trace(go.Scatter3d(
         x=vertex[:, 0],
         y=vertex[:, 1],
@@ -253,9 +244,9 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, file
         showlegend=False
     ))
     fig.add_trace(go.Scatter3d(
-        x=xyz[:, 0],
-        y=xyz[:, 1],
-        z=xyz[:, 2],
+        x=electrode_positions[:, 0],
+        y=electrode_positions[:, 1],
+        z=electrode_positions[:, 2],
         mode='markers',
         marker=dict(size=3, color='blue', opacity=1),
         name='Electrodes',
