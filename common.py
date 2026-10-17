@@ -239,7 +239,7 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save
         y=electrode_positions[:, 1],
         z=electrode_positions[:, 2],
         mode='markers',
-        marker=dict(size=5, color='blue', opacity=1),
+        marker=dict(size=2, color='blue', opacity=1),
         name='Electrodes',
         showlegend=False
     ))
