@@ -229,10 +229,8 @@ def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
 
 def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save_flag, file_path):
     # triangular mesh
-    save_flag = 0
-    edge_flag = 0
     file_path_mesh = []
-    fig = plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh)
+    fig = plot_mesh(vertex, face, 0, 0, file_path_mesh)
     fig.data[0].opacity = 0.3
 
     # electrodes
@@ -241,23 +239,10 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save
         y=electrode_positions[:, 1],
         z=electrode_positions[:, 2],
         mode='markers',
-        marker=dict(size=3, color='blue', opacity=1),
+        marker=dict(size=5, color='blue', opacity=1),
         name='Electrodes',
         showlegend=False
     ))
-    # fig.update_layout(
-    #     scene=dict(
-    #         dragmode='orbit',
-    #         xaxis_title='X',
-    #         yaxis_title='Y',
-    #         zaxis_title='Z',
-    #         aspectmode='data'
-    #     ),
-    #     margin=dict(l=0, r=0, b=0, t=40),
-    #     width=1000,
-    #     height=800
-    # )
-    fig.show()
 
     if save_flag == 1:
         png_path = f'{file_path}.png'
@@ -266,3 +251,4 @@ def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save
 
         html_path = f'{file_path}.html'
         fig.write_html(html_path, include_plotlyjs='cdn')
+
