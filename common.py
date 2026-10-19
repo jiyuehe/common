@@ -338,4 +338,3 @@ def plot_electrode_electrogram(result_folder, electrode, electrode_point_info, p
         file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{e_ids[i]}.png')
         plt.savefig(file_path)
         plt.close()
-
