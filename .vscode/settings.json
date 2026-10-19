@@ -1,6 +1,0 @@
-{
-    // Jay's desktop
-    "python.defaultInterpreterPath": "/home/j/Desktop/ssd/myenv/bin/python3",
-    
-    "python.terminal.activateEnvironment": true,
-}
