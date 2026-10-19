@@ -15,6 +15,8 @@
 
 import numpy as np
 from PIL import Image # pip install pillow
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import subprocess
