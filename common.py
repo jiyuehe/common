@@ -229,8 +229,7 @@ def plot_mesh(vertex, face, save_flag, edge_flag, file_path_mesh):
 
 def plot_all_electrode_positions_in_mesh(vertex, face, electrode_positions, save_flag, file_path):
     # triangular mesh
-    file_path_mesh = []
-    fig = plot_mesh(vertex, face, 0, 0, file_path_mesh)
+    fig = plot_mesh(vertex, face, 0, 0, [])
     fig.data[0].opacity = 0.3
 
     # electrodes
