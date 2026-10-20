@@ -338,3 +338,186 @@ def plot_electrode_electrogram(result_folder, electrode, electrode_point_info, p
         file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{e_ids[i]}.png')
         plt.savefig(file_path)
         plt.close()
+
+def catheter_position_in_mesh(vertex, face, catheter, file_path):
+    total_segments = len(catheter['mapping_position_unipolar'])
+    if total_segments <= 5:
+        segment_ids = range(total_segments)
+    else:
+        segment_ids = np.linspace(0, total_segments - 1, 5, dtype=int) # 5 uniformly spaced indices
+
+    for s_id in segment_ids:
+        mapping_position_unipolar = catheter['mapping_position_unipolar'][s_id]
+        mapping_position_bipolar = catheter['mapping_position_bipolar'][s_id]
+        coronary_sinus_position_unipolar = catheter['coronary_sinus_position_unipolar'][s_id]
+        coronary_sinus_position_bipolar = catheter['coronary_sinus_position_bipolar'][s_id]
+
+        # triangular mesh
+        fig = plot_mesh(vertex, face, 0, 0, [])
+        fig.data[0].opacity = 0.3
+
+        # electrodes
+        fig.add_trace(go.Scatter3d(
+            x=mapping_position_unipolar[:, 0],
+            y=mapping_position_unipolar[:, 1],
+            z=mapping_position_unipolar[:, 2],
+            mode='markers',
+            marker=dict(size=2, color='blue', opacity=1),
+            name='Electrodes',
+            showlegend=False
+        ))
+
+        fig.add_trace(go.Scatter3d(
+            x=mapping_position_bipolar[:, 0],
+            y=mapping_position_bipolar[:, 1],
+            z=mapping_position_bipolar[:, 2],
+            mode='markers',
+            marker=dict(size=2, color='cyan', opacity=1),
+            name='Electrodes',
+            showlegend=False
+        ))
+
+        if coronary_sinus_position_unipolar is not None:
+            fig.add_trace(go.Scatter3d(
+                x=coronary_sinus_position_unipolar[:, 0],
+                y=coronary_sinus_position_unipolar[:, 1],
+                z=coronary_sinus_position_unipolar[:, 2],
+                mode='markers',
+                marker=dict(size=2, color='yellow', opacity=1),
+                name='Electrodes',
+                showlegend=False
+            ))
+
+        if coronary_sinus_position_bipolar is not None:
+            fig.add_trace(go.Scatter3d(
+                x=coronary_sinus_position_bipolar[:, 0],
+                y=coronary_sinus_position_bipolar[:, 1],
+                z=coronary_sinus_position_bipolar[:, 2],
+                mode='markers',
+                marker=dict(size=2, color='magenta', opacity=1),
+                name='Electrodes',
+                showlegend=False
+            ))
+
+        # save the figure
+        png_path = f'{file_path}_{s_id}.png'
+        fig.write_image(png_path, scale=2)
+        crop_image(png_path)
+
+        html_path = f'{file_path}_{s_id}.html'
+        fig.write_html(html_path, include_plotlyjs='cdn')
+
+def simplify_electrode_name(electrode_name):
+    # remove the common prefix in the electrode names to make it shorter for display
+    prefixes = ['MCC_Dx_UniPolar_', 'MCC_Dx_BiPolar_', 'Deca', '20A_', '20B_', 'CS_']
+    
+    # Handle both single string and list of strings
+    is_single_string = isinstance(electrode_name, str)
+    if is_single_string:
+        electrode_name = [electrode_name]
+    
+    simplified_names = []
+    for name in electrode_name:
+        simplified_name = name
+        for prefix in prefixes:
+            # replace all occurrences of the prefix in this name
+            simplified_name = simplified_name.replace(prefix, '')
+        simplified_names.append(simplified_name)
+    
+    # return a string if input was a string, otherwise return list
+    return simplified_names[0] if is_single_string else simplified_names
+
+def catheter_electrogram_draw(egm, electrode_name, egm_ref, reference_channel_name, woi, title, ax):
+    electrode_name_display = simplify_electrode_name(electrode_name)
+    reference_channel_name_display = simplify_electrode_name(reference_channel_name)
+    
+    # find out the scale factor
+    egm_display = np.zeros_like(egm)
+    egm_magnitude = np.zeros(egm.shape[1])
+    for e_id in range(egm.shape[1]):
+        temp = egm[:, e_id]
+        egm_magnitude[e_id] = np.max(temp) - np.min(temp)
+    scale_factor = 1 / np.max(egm_magnitude) # scale the largest amplitude to 1
+
+    for e_id in range(egm.shape[1]):
+        temp = egm[:, e_id]
+        temp = temp * scale_factor # normalize
+        egm_display[:, e_id] = temp + e_id + 1
+
+    egm_ref_magnitude = np.max(egm_ref) - np.min(egm_ref)
+    egm_ref_display = egm_ref / egm_ref_magnitude # normalize
+
+    t = np.arange(egm.shape[0])
+    woi_start = int(woi[0])
+    woi_end = int(woi[1])
+
+    # reference electrogram
+    ax.plot(t[:woi_start], egm_ref_display[:woi_start], color='c') # plot before woi
+    ax.plot(t[woi_start:woi_end], egm_ref_display[woi_start:woi_end], color='red') # plot woi region
+    ax.plot(t[woi_end:], egm_ref_display[woi_end:], color='c') # plot after woi
+
+    # electrogram of each electrode of the catheter
+    for i in range(egm_display.shape[1]):
+        ax.plot(t[:woi_start], egm_display[:woi_start, i], color='b') # plot before woi
+        ax.plot(t[woi_start:woi_end], egm_display[woi_start:woi_end, i], color='red') # plot woi region
+        ax.plot(t[woi_end:], egm_display[woi_end:, i], color='b') # plot after woi
+
+    ax.set_title(title)
+    ax.set_xlabel('Time (ms)')
+    ax.set_yticks([0] + list(range(1, egm_display.shape[1] + 1)))
+    electrode_name_and_magnitude = [f'{name}, {mag:.2f}' for name, mag in zip(electrode_name_display, egm_magnitude)]
+    ax.set_yticklabels([f'{reference_channel_name_display}, {egm_ref_magnitude:.2f}'] + electrode_name_and_magnitude)
+    ax.grid(True, alpha=1)
+    plt.tight_layout()
+
+def catheter_electrogram(catheter, result_folder, p_id, file_name_prefix):
+    # example recording segments to plot
+    N = len(catheter['mapping_electrogram_unipolar'])
+    if N <= 5:
+        segment_ids = range(N)
+    else:
+        segment_ids = np.linspace(0, N - 1, 5, dtype=int) # 5 uniformly spaced indices
+    
+    mapping_unipolar_electrode_name = catheter['mapping_name_unipolar']
+    mapping_bipolar_electrode_name = catheter['mapping_name_bipolar']
+    coronary_sinus_unipolar_electrode_name = catheter['coronary_sinus_name_unipolar']
+    coronary_sinus_bipolar_electrode_name = catheter['coronary_sinus_name_bipolar']
+    reference_channel_name = catheter['reference_name']
+    surface_channel_names = catheter['surface_name']
+
+    for s_id in segment_ids:
+        mapping_electrogram_unipolar = catheter['mapping_electrogram_unipolar'][s_id]
+        mapping_electrogram_bipolar = catheter['mapping_electrogram_bipolar'][s_id]
+        coronary_sinus_electrogram_unipolar = catheter['coronary_sinus_electrogram_unipolar'][s_id]
+        coronary_sinus_electrogram_bipolar = catheter['coronary_sinus_electrogram_bipolar'][s_id]
+        surface_electrogram = catheter['surface_electrogram'][s_id]
+        woi = catheter['window_of_interest'][s_id]
+        egm_ref = catheter['reference_electrogram'][s_id]
+
+        fig, ax = plt.subplots(1, 5, figsize=(20, 8))
+
+        # mapping catheter unipolar electrograms
+        if mapping_electrogram_unipolar.shape[1] != 0:
+            catheter_electrogram_draw(mapping_electrogram_unipolar, mapping_unipolar_electrode_name, egm_ref, reference_channel_name[s_id], woi, 'Unipolar Electrograms', ax[0])
+
+        # mapping catheter bipolar electrograms
+        if mapping_electrogram_bipolar.shape[1] != 0:
+            catheter_electrogram_draw(mapping_electrogram_bipolar, mapping_bipolar_electrode_name, egm_ref, reference_channel_name[s_id], woi, 'Bipolar Electrograms', ax[1])
+
+        # surface electrograms
+        catheter_electrogram_draw(surface_electrogram, surface_channel_names, egm_ref, reference_channel_name[s_id], woi, 'Surface Electrograms', ax[2])
+
+        # coronary sinus catheter bipolar electrograms
+        if coronary_sinus_electrogram_bipolar.shape[1] != 0:
+            number_of_cs_bipolar = coronary_sinus_electrogram_bipolar.shape[1]
+            catheter_electrogram_draw(coronary_sinus_electrogram_bipolar, coronary_sinus_bipolar_electrode_name[0:number_of_cs_bipolar], egm_ref, reference_channel_name[s_id], woi, 'Coronary Sinus Bipolar Electrograms', ax[3])
+
+        # coronary sinus catheter unipolar electrograms
+        if coronary_sinus_electrogram_unipolar.shape[1] != 0:
+            number_of_cs_unipolar = coronary_sinus_electrogram_unipolar.shape[1]
+            catheter_electrogram_draw(coronary_sinus_electrogram_unipolar, coronary_sinus_unipolar_electrode_name[0:number_of_cs_unipolar], egm_ref, reference_channel_name[s_id], woi, 'Coronary Sinus Unipolar Electrograms', ax[4])
+
+        # save the figure
+        file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{s_id}.png')
+        plt.savefig(file_path)
+        plt.close()
