@@ -477,19 +477,20 @@ def catheter_electrogram(catheter, result_folder, p_id, file_name_prefix):
         segment_ids = range(N)
     else:
         segment_ids = np.linspace(0, N - 1, 5, dtype=int) # 5 uniformly spaced indices
-    
-    mapping_unipolar_electrode_name = catheter['mapping_name_unipolar']
-    mapping_bipolar_electrode_name = catheter['mapping_name_bipolar']
-    coronary_sinus_unipolar_electrode_name = catheter['coronary_sinus_name_unipolar']
-    coronary_sinus_bipolar_electrode_name = catheter['coronary_sinus_name_bipolar']
-    reference_channel_name = catheter['reference_name']
-    surface_channel_names = catheter['surface_name']
 
+    reference_channel_names = catheter['reference_name']
+    surface_channel_names = catheter['surface_name']
     for s_id in segment_ids:
         mapping_electrogram_unipolar = catheter['mapping_electrogram_unipolar'][s_id]
+        mapping_electrode_name_unipolar = catheter['mapping_name_unipolar'][s_id]
         mapping_electrogram_bipolar = catheter['mapping_electrogram_bipolar'][s_id]
+        mapping_electrode_name_bipolar = catheter['mapping_name_bipolar'][s_id]
+
         coronary_sinus_electrogram_unipolar = catheter['coronary_sinus_electrogram_unipolar'][s_id]
+        coronary_sinus_electrode_name_unipolar = catheter['coronary_sinus_name_unipolar'][s_id]
         coronary_sinus_electrogram_bipolar = catheter['coronary_sinus_electrogram_bipolar'][s_id]
+        coronary_sinus_electrode_name_bipolar = catheter['coronary_sinus_name_bipolar'][s_id]
+
         surface_electrogram = catheter['surface_electrogram'][s_id]
         woi = catheter['window_of_interest'][s_id]
         egm_ref = catheter['reference_electrogram'][s_id]
@@ -498,24 +499,28 @@ def catheter_electrogram(catheter, result_folder, p_id, file_name_prefix):
 
         # mapping catheter unipolar electrograms
         if mapping_electrogram_unipolar.shape[1] != 0:
-            catheter_electrogram_draw(mapping_electrogram_unipolar, mapping_unipolar_electrode_name, egm_ref, reference_channel_name[s_id], woi, 'Unipolar Electrograms', ax[0])
+            catheter_electrogram_draw(mapping_electrogram_unipolar, mapping_electrode_name_unipolar, egm_ref, reference_channel_names[s_id], woi, 'Unipolar Electrograms', ax[0])
 
         # mapping catheter bipolar electrograms
         if mapping_electrogram_bipolar.shape[1] != 0:
-            catheter_electrogram_draw(mapping_electrogram_bipolar, mapping_bipolar_electrode_name, egm_ref, reference_channel_name[s_id], woi, 'Bipolar Electrograms', ax[1])
+            egm = mapping_electrogram_bipolar
+            electrode_name = mapping_electrode_name_bipolar
+            reference_channel_name = reference_channel_names[s_id]
+            title = 'Bipolar Electrograms'
+            catheter_electrogram_draw(egm, electrode_name, egm_ref, reference_channel_name, woi, title, ax[1])
 
         # surface electrograms
-        catheter_electrogram_draw(surface_electrogram, surface_channel_names, egm_ref, reference_channel_name[s_id], woi, 'Surface Electrograms', ax[2])
+        catheter_electrogram_draw(surface_electrogram, surface_channel_names, egm_ref, reference_channel_names[s_id], woi, 'Surface Electrograms', ax[2])
 
         # coronary sinus catheter bipolar electrograms
         if coronary_sinus_electrogram_bipolar.shape[1] != 0:
             number_of_cs_bipolar = coronary_sinus_electrogram_bipolar.shape[1]
-            catheter_electrogram_draw(coronary_sinus_electrogram_bipolar, coronary_sinus_bipolar_electrode_name[0:number_of_cs_bipolar], egm_ref, reference_channel_name[s_id], woi, 'Coronary Sinus Bipolar Electrograms', ax[3])
+            catheter_electrogram_draw(coronary_sinus_electrogram_bipolar, coronary_sinus_electrode_name_bipolar[0:number_of_cs_bipolar], egm_ref, reference_channel_names[s_id], woi, 'Coronary Sinus Bipolar Electrograms', ax[3])
 
         # coronary sinus catheter unipolar electrograms
         if coronary_sinus_electrogram_unipolar.shape[1] != 0:
             number_of_cs_unipolar = coronary_sinus_electrogram_unipolar.shape[1]
-            catheter_electrogram_draw(coronary_sinus_electrogram_unipolar, coronary_sinus_unipolar_electrode_name[0:number_of_cs_unipolar], egm_ref, reference_channel_name[s_id], woi, 'Coronary Sinus Unipolar Electrograms', ax[4])
+            catheter_electrogram_draw(coronary_sinus_electrogram_unipolar, coronary_sinus_electrode_name_unipolar[0:number_of_cs_unipolar], egm_ref, reference_channel_names[s_id], woi, 'Coronary Sinus Unipolar Electrograms', ax[4])
 
         # save the figure
         file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{s_id}.png')
