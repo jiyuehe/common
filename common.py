@@ -23,6 +23,58 @@ import subprocess
 import sys
 import plotly.graph_objects as go
 
+# read patient data info
+# ==================================================
+def read_info_csv(directory):
+    method = 1  # 1: directly read the online Google Sheet. 2: download the Google Sheet as csv and put in folder directory['data'], then read it
+
+    if method == 1:
+        source = 'https://docs.google.com/spreadsheets/d/1XT3N8dlEIWSxM9se9UjI48eXQAc5F-UxXf7yMfPPdOI/export?format=csv&gid=2056874708'
+    elif method == 2:
+        source = Path(directory['data']) / 'carto_data_notes.csv'
+
+    df = pd.read_csv(source, dtype=str)
+
+    patients = []
+    for _, row in df.iterrows():
+        patient = {
+            'id': row.get('Patient ID', ''),
+            'zip_file_name': row.get('Zip File Name', ''),
+            'mesh': row.get('Map Name', ''),
+            'atrium_flag': row.get('Atrium Flag', ''),
+            'rhythm': row.get('Arrhythmia Note', ''),
+            'mapping_connector': str(row.get('Mapping Connector Name', '') or ''),
+            'mapping_electrode_prefix': '',
+            'mapping_catheter': row.get('Mapping Catheter Name', ''),
+            'mapping_electrode_style': row.get('Mapping Electrode Name Style', ''),
+            'coronary_sinus_connector': str(row.get('Coronary Sinus Connector Name', '') or ''),
+            'coronary_sinus_electrode_prefix': '',
+            'coronary_sinus_electrode_style': row.get('Coronary Sinus Electrode Name Style', ''),
+            'n_coronary_sinus': row.get('Amount of Coronary Sinus Catheter Electrodes', ''),
+        }
+
+        if '_B_' in patient['mapping_connector']:
+            patient['mapping_electrode_prefix'] = '20B'
+        elif '_A_' in patient['mapping_connector']:
+            patient['mapping_electrode_prefix'] = '20A'
+        elif 'MCC_DX_' in patient['mapping_connector']:
+            patient['mapping_electrode_prefix'] = 'MCC_Dx'
+
+        if '_B_' in patient['coronary_sinus_connector']:
+            patient['coronary_sinus_electrode_prefix'] = '20B'
+        elif '_A_' in patient['coronary_sinus_connector']:
+            patient['coronary_sinus_electrode_prefix'] = '20A'
+
+        patients.append(patient)
+
+    # fill in the blanks
+    for i, patient in enumerate(patients):
+        if pd.isna(patient['id']):
+            patient['id'] = patients[i-1]['id'] # patient references the same object in patients, so modifying patient also modifies patients
+            patient['zip_file_name'] = patients[i-1]['zip_file_name']
+
+    return patients
+
 # obj. 3D mesh file
 # ==================================================
 def load_obj(file_directory, mesh_name):
