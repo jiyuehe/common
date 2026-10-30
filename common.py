@@ -47,13 +47,12 @@ def read_info_csv(directory):
             'atrium_flag': row.get('Atrium Flag', ''),
             'rhythm': row.get('Arrhythmia Note', ''),
             'mapping_connector': str(row.get('Mapping Connector Name', '') or ''),
-            'mapping_electrode_prefix': '',
             'mapping_catheter': row.get('Mapping Catheter Name', ''),
             'mapping_electrode_style': row.get('Mapping Electrode Name Style', ''),
             'coronary_sinus_connector': str(row.get('Coronary Sinus Connector Name', '') or ''),
-            'coronary_sinus_electrode_prefix': '',
             'coronary_sinus_electrode_style': row.get('Coronary Sinus Electrode Name Style', ''),
-            'n_coronary_sinus': row.get('Amount of Coronary Sinus Catheter Electrodes', ''),
+            'mapping_electrode_prefix': '',
+            'coronary_sinus_electrode_prefix': '',
         }
 
         if '_B_' in patient['mapping_connector']:
