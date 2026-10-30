@@ -15,6 +15,7 @@
 
 import numpy as np
 from PIL import Image # pip install pillow
+from pathlib import Path
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
@@ -39,6 +40,7 @@ def read_info_csv(directory):
     patients = []
     for _, row in df.iterrows():
         patient = {
+            'status': row.get('Status', ''),
             'id': row.get('Patient ID', ''),
             'zip_file_name': row.get('Zip File Name', ''),
             'mesh': row.get('Map Name', ''),
