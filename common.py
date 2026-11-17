@@ -580,3 +580,113 @@ def catheter_electrogram(catheter, result_folder, p_id, file_name_prefix):
         file_path = str(result_folder / f'{p_id}_{file_name_prefix}_electrode_{s_id}.png')
         plt.savefig(file_path)
         plt.close()
+
+def show_mesh_and_node_flag(node, face, node_flag, color_map, show_edge_flag=1, save_png_flag=0, save_html_flag=0, save_path=None):
+    if show_edge_flag == 1:
+        vertex_color = np.full((len(node_flag), 3), 1.0, dtype=float) # initialize vertex colors to white
+    elif show_edge_flag == 0:
+        vertex_color = np.full((len(node_flag), 3), 0.8, dtype=float) # initialize vertex colors to light gray
+
+    for flag_value, color in color_map.items():
+        vertex_ids = np.where(node_flag == int(flag_value))[0]
+        vertex_color[vertex_ids] = np.asarray(color, dtype=float)
+
+    fi, fj, fk = face[:, 0], face[:, 1], face[:, 2]
+
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=node[:, 0],
+            y=node[:, 1],
+            z=node[:, 2],
+            i=fi,
+            j=fj,
+            k=fk,
+            vertexcolor=vertex_color,
+            flatshading=False,
+            opacity=1,
+        ),
+    ])
+
+    if show_edge_flag == 1:
+        fig.add_trace(go.Scatter3d( # triangle edges
+            x=np.stack([node[fi, 0], node[fj, 0], node[fk, 0], node[fi, 0], np.full(len(fi), None)], axis=1).ravel(),
+            y=np.stack([node[fi, 1], node[fj, 1], node[fk, 1], node[fi, 1], np.full(len(fi), None)], axis=1).ravel(),
+            z=np.stack([node[fi, 2], node[fj, 2], node[fk, 2], node[fi, 2], np.full(len(fi), None)], axis=1).ravel(),
+            mode='lines',
+            line=dict(color='gray', width=1),
+            showlegend=False,
+            hoverinfo='skip',
+        ))
+
+    # estimate which vertices face each candidate camera direction.
+    tri = node[face]
+    face_normal = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+
+    vertex_normal = np.zeros_like(node, dtype=float)
+    for corner in range(3):
+        np.add.at(vertex_normal, face[:, corner], face_normal)
+
+    length = np.linalg.norm(vertex_normal, axis=1)
+    vertex_normal /= np.maximum(length[:, None], 1e-12)
+
+    best_score = -1
+    azim_deg, elev_deg = -70, 70  # fallback
+
+    for az in range(-180, 180, 5):
+        for el in range(-90, 90, 5):
+            az_rad, el_rad = np.deg2rad([az, el])
+            direction = np.array([
+                np.cos(el_rad) * np.cos(az_rad),
+                np.cos(el_rad) * np.sin(az_rad),
+                np.sin(el_rad),
+            ])
+            facing = vertex_normal @ direction > 0
+
+            # balance the visible fractions of the two flagged regions.
+            fractions = [
+                np.mean(facing[node_flag == flag])
+                for flag in (1, 3)
+                if np.any(node_flag == flag)
+            ]
+            score = sum(fractions) / len(fractions) if fractions else 0
+
+            if score > best_score:
+                best_score = score
+                azim_deg, elev_deg = az, el
+
+    # azim_deg = -70
+    # elev_deg = 70
+    radius = 1.5
+    azim_rad = np.deg2rad(azim_deg)
+    elev_rad = np.deg2rad(elev_deg)
+
+    eye_x = radius * np.cos(elev_rad) * np.cos(azim_rad)
+    eye_y = radius * np.cos(elev_rad) * np.sin(azim_rad)
+    eye_z = radius * np.sin(elev_rad)
+
+    fig.update_layout(
+        scene=dict(
+            xaxis=dict(visible=False, showgrid=False, showbackground=False),
+            yaxis=dict(visible=False, showgrid=False, showbackground=False),
+            zaxis=dict(visible=False, showgrid=False, showbackground=False),
+            dragmode='orbit',
+            aspectmode='data',
+            camera=dict(
+                eye=dict(x=eye_x, y=eye_y, z=eye_z),
+                up=dict(x=0, y=0, z=1),
+            ),
+        )
+    )
+
+    if save_png_flag == 1:
+        # save as image
+        fig.write_image(save_path, scale=2)
+
+    if save_html_flag == 1:
+        # save as html that can be opened in a web browser for interactive viewing
+        html_path = os.path.splitext(save_path)[0] + '.html'
+        fig.write_html(html_path, include_plotlyjs=True, full_html=True)
+    
+    if save_png_flag == 0 :
+        fig.show()
+
