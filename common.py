@@ -594,31 +594,6 @@ def show_mesh_and_node_flag(node, face, node_flag, color_map, show_edge_flag=1, 
 
     fi, fj, fk = face[:, 0], face[:, 1], face[:, 2]
 
-    fig = go.Figure(data=[
-        go.Mesh3d(
-            x=node[:, 0],
-            y=node[:, 1],
-            z=node[:, 2],
-            i=fi,
-            j=fj,
-            k=fk,
-            vertexcolor=vertex_color,
-            flatshading=False,
-            opacity=1,
-        ),
-    ])
-
-    if show_edge_flag == 1:
-        fig.add_trace(go.Scatter3d( # triangle edges
-            x=np.stack([node[fi, 0], node[fj, 0], node[fk, 0], node[fi, 0], np.full(len(fi), None)], axis=1).ravel(),
-            y=np.stack([node[fi, 1], node[fj, 1], node[fk, 1], node[fi, 1], np.full(len(fi), None)], axis=1).ravel(),
-            z=np.stack([node[fi, 2], node[fj, 2], node[fk, 2], node[fi, 2], np.full(len(fi), None)], axis=1).ravel(),
-            mode='lines',
-            line=dict(color='gray', width=1),
-            showlegend=False,
-            hoverinfo='skip',
-        ))
-
     # estimate which vertices face each candidate camera direction.
     tri = node[face]
     face_normal = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
@@ -630,46 +605,85 @@ def show_mesh_and_node_flag(node, face, node_flag, color_map, show_edge_flag=1, 
     length = np.linalg.norm(vertex_normal, axis=1)
     vertex_normal /= np.maximum(length[:, None], 1e-12)
 
+    flagged = node_flag == 1
+    mesh_center = node.mean(axis=0)
+    if np.any(flagged):
+        flagged_center = node[flagged].mean(axis=0)
+        target_direction = flagged_center - mesh_center
+        target_length = np.linalg.norm(target_direction)
+        if target_length > 1e-12:
+            target_direction /= target_length
+        else:
+            target_direction = vertex_normal[flagged].mean(axis=0)
+            target_length = np.linalg.norm(target_direction)
+            if target_length > 1e-12:
+                target_direction /= target_length
+    else:
+        flagged_center = mesh_center
+        target_direction = np.array([0.0, 0.0, 1.0])
+
     best_score = -1
     azim_deg, elev_deg = -70, 70  # fallback
 
-    for az in range(-180, 180, 5):
-        for el in range(-90, 90, 5):
-            az_rad, el_rad = np.deg2rad([az, el])
-            direction = np.array([
-                np.cos(el_rad) * np.cos(az_rad),
-                np.cos(el_rad) * np.sin(az_rad),
-                np.sin(el_rad),
-            ])
-            facing = vertex_normal @ direction > 0
+    if np.any(flagged):
+        for az in range(-180, 180, 5):
+            for el in range(-90, 90, 5):
+                az_rad, el_rad = np.deg2rad([az, el])
+                direction = np.array([
+                    np.cos(el_rad) * np.cos(az_rad),
+                    np.cos(el_rad) * np.sin(az_rad),
+                    np.sin(el_rad),
+                ])
+                facing = vertex_normal @ direction > 0
+                score = 2 * np.dot(direction, target_direction) + np.mean(facing[flagged])
 
-            # balance the visible fractions of the two flagged regions.
-            fractions = [
-                np.mean(facing[node_flag == flag])
-                for flag in (1, 3)
-                if np.any(node_flag == flag)
-            ]
-            score = sum(fractions) / len(fractions) if fractions else 0
+                if score > best_score:
+                    best_score = score
+                    azim_deg, elev_deg = az, el
 
-            if score > best_score:
-                best_score = score
-                azim_deg, elev_deg = az, el
+    azim_rad, elev_rad = np.deg2rad([azim_deg, elev_deg])
+    view_center = flagged_center
 
-    # azim_deg = -70
-    # elev_deg = 70
+    plot_node = node - view_center
+    axis_extent = np.max(np.abs(plot_node), axis=0)
+    axis_extent = np.maximum(axis_extent, np.max(axis_extent) * 1e-6)
+    axis_extent = np.maximum(axis_extent, 1e-12)
+
+    fig = go.Figure(data=[
+        go.Mesh3d(
+            x=plot_node[:, 0],
+            y=plot_node[:, 1],
+            z=plot_node[:, 2],
+            i=fi,
+            j=fj,
+            k=fk,
+            vertexcolor=vertex_color,
+            flatshading=False,
+            opacity=1,
+        ),
+    ])
+
+    if show_edge_flag == 1:
+        fig.add_trace(go.Scatter3d( # triangle edges
+            x=np.stack([plot_node[fi, 0], plot_node[fj, 0], plot_node[fk, 0], plot_node[fi, 0], np.full(len(fi), None)], axis=1).ravel(),
+            y=np.stack([plot_node[fi, 1], plot_node[fj, 1], plot_node[fk, 1], plot_node[fi, 1], np.full(len(fi), None)], axis=1).ravel(),
+            z=np.stack([plot_node[fi, 2], plot_node[fj, 2], plot_node[fk, 2], plot_node[fi, 2], np.full(len(fi), None)], axis=1).ravel(),
+            mode='lines',
+            line=dict(color='gray', width=1),
+            showlegend=False,
+            hoverinfo='skip',
+        ))
+
     radius = 1.5
-    azim_rad = np.deg2rad(azim_deg)
-    elev_rad = np.deg2rad(elev_deg)
-
     eye_x = radius * np.cos(elev_rad) * np.cos(azim_rad)
     eye_y = radius * np.cos(elev_rad) * np.sin(azim_rad)
     eye_z = radius * np.sin(elev_rad)
 
     fig.update_layout(
         scene=dict(
-            xaxis=dict(visible=False, showgrid=False, showbackground=False),
-            yaxis=dict(visible=False, showgrid=False, showbackground=False),
-            zaxis=dict(visible=False, showgrid=False, showbackground=False),
+            xaxis=dict(visible=False, showgrid=False, showbackground=False, range=[-axis_extent[0], axis_extent[0]]),
+            yaxis=dict(visible=False, showgrid=False, showbackground=False, range=[-axis_extent[1], axis_extent[1]]),
+            zaxis=dict(visible=False, showgrid=False, showbackground=False, range=[-axis_extent[2], axis_extent[2]]),
             dragmode='orbit',
             aspectmode='data',
             camera=dict(
@@ -690,4 +704,3 @@ def show_mesh_and_node_flag(node, face, node_flag, color_map, show_edge_flag=1, 
     
     if save_png_flag == 0 :
         fig.show()
-
