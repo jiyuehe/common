@@ -23,6 +23,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import subprocess
 import sys
+import os
 import plotly.graph_objects as go
 
 # read patient data info
