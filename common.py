@@ -642,7 +642,7 @@ def show_mesh_and_node_flag(node, face, node_flag, color_map, show_edge_flag=1, 
                     azim_deg, elev_deg = az, el
 
     azim_rad, elev_rad = np.deg2rad([azim_deg, elev_deg])
-    view_center = flagged_center
+    view_center = mesh_center
 
     plot_node = node - view_center
     axis_extent = np.max(np.abs(plot_node), axis=0)
