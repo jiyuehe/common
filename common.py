@@ -194,8 +194,8 @@ def crop_image(image_file_name): # crop image to remove excess whitespace
 
 # electroanatomical maps
 # ==================================================
-def electroanatomical_map_on_voxel_cube(voxel, lat_voxel, color_tpye, fig_name):
-    data = lat_voxel
+def electroanatomical_map_on_voxel_cube(voxel, value_voxel, color_tpye, fig_name):
+    data = value_voxel
     data_min = np.nanmin(data)
     data_max = np.nanmax(data)
     data_threshold = data_min-0.1 # a little small than data_min, so that places with value of data_min will have color
